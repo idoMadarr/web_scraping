@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import BotAutomation from "../models/Bot";
+import BotAutomation from "../models/BotAutomation";
 
 const createBot = async () => {
   const browser = await puppeteer.launch({
