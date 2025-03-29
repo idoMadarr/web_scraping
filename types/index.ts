@@ -1,0 +1,9 @@
+export type DBType = {
+  [key: string]: { data: ItemType[] };
+};
+
+export interface ItemType {
+  title: string | null;
+  price: string | null;
+  image: string | null;
+}

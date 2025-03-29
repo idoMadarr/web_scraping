@@ -1,22 +1,48 @@
 import { Page } from "puppeteer";
-import { Provider, Selector} from "./interfaces/index.js";
-import { providerFetch } from "./providers/providerFetch";
-import fs  from "fs";
+import fs from "fs";
+import * as dotenv from "dotenv";
+import { onScraper } from "./utils/scraper";
 import createBot from "./utils/createBot";
-import providers from "./providers/providersList";
+import providersList from "./utils/providers.js";
+import { DBType } from "./types";
+
+dotenv.config();
 
 const startScraping = async () => {
-  const { page } = await createBot();
-  await Promise.all(providers.map(provider => scrapProvider(page,provider)));
+  const { page, bot } = await createBot();
+
+  const providers = Object.values(providersList);
+  for (const provider of providers) {
+    await providerScraper(provider, page);
+  }
+
+  await bot.closeAutomation();
+  console.log("-- DONE --");
 };
 
-const scrapProvider = async ( page: Page,provider:Provider) => {
-  await page.goto(provider.url, {
-    waitUntil: "networkidle2",
-    timeout: 60000,
+const providerScraper = async (provider: string, page: Page) => {
+  try {
+    // Open new tab:
+    await page.goto(`${process.env.URL}/${provider}`, {
+      waitUntil: "networkidle2",
+      timeout: 60000,
     });
-  const providerData = await providerFetch(page, provider.selector);
-  const jsonData = JSON.stringify(providerData, null, 2);
-  fs.writeFileSync("data.json", jsonData, "utf8");
+
+    // Start scraping data:
+    const providerData = await onScraper(page);
+
+    // Store on local cache db:
+    const fileContent = fs.readFileSync(`db/${process.env.CACHE_DB}`, "utf8");
+    const currentData = JSON.parse(fileContent);
+    const data: DBType = { ...currentData, [provider]: providerData };
+    fs.writeFileSync(
+      `db/${process.env.CACHE_DB}`,
+      JSON.stringify(data),
+      "utf8"
+    );
+  } catch (error) {
+    console.log(`Error occur on ${provider}:`, error);
+  }
 };
+
 startScraping();
