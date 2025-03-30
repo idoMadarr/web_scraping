@@ -11,16 +11,31 @@ export const onScraper = async (page: Page) => {
         selectors.general.title,
         (el) => el.textContent?.trim() || null
       );
+
       const price = await item.$eval(
         selectors.general.price,
         (el) => el.textContent || null
       );
+      // const price = await item.$eval(
+      //   selectors.general.price,
+      //   (el) => {
+      //     const img = el.querySelector(`img[alt="${selectors.general.priceImgAlt}"]`);
+      //     return el.textContent?.trim() || null;
+      //   }
+      // );
+      
       const image = await item.$eval(
         selectors.general.image,
         (el) => el.getAttribute("src") || null
       );
 
-      return { title, price, image };
+      const encodeHref = await item.$eval(
+        selectors.general.href,
+        (el) => el.getAttribute("href") || null
+      );
+      const href = decodeURIComponent(encodeHref || "");
+
+      return { title, price, image, href };
     })
   );
 
