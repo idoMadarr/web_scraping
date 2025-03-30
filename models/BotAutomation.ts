@@ -1,5 +1,5 @@
-import node from "node:timers/promises";
-import { Browser, Page } from "puppeteer";
+import node from 'node:timers/promises';
+import { Browser, Page } from 'puppeteer';
 
 const SETTINGS = {
   visible: true,
@@ -20,12 +20,18 @@ export default class BotAutomation {
     await this.page.waitForSelector(selector, SETTINGS);
     await node.setTimeout(TIMEOUT); // Delay between actions
     await this.page.click(selector);
+    // this.page.waitForNavigation();
   }
 
   async waitAndType(selector: string, text: string) {
     await this.page.waitForSelector(selector, SETTINGS);
     await node.setTimeout(TIMEOUT);
     await this.page.type(selector, text);
+  }
+
+  async goBack() {
+    await this.page.goBack();
+    // this.page.waitForNavigation();
   }
 
   async closeAutomation() {
