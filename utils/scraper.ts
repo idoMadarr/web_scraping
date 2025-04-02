@@ -13,10 +13,6 @@ export const onScraper = async (page: Page, bot: BotAutomation) => {
       selectors.general.title,
       (el) => el.textContent?.trim() || null
     );
-    const price = await item.$eval(
-      selectors.general.price,
-      (el) => el.textContent || null
-    );
     const image = await item.$eval(
       selectors.general.image,
       (el) => el.getAttribute("src") || null
@@ -26,10 +22,16 @@ export const onScraper = async (page: Page, bot: BotAutomation) => {
       (el) => el.getAttribute("href") || null
     );
     const navigateLink = `https://www.clubhub.co.il${href}`;
-    let purchasableLink = "N/a";
+    let link = "N/a";
+    let price = "";
 
-    if (href) purchasableLink = await fetchNestedHref(page, navigateLink);
-    const product = { title, price, image, href: purchasableLink };
+    if (href) {
+      const nestedData = await fetchNestedData(page, navigateLink);
+      price = nestedData.price;
+      link = nestedData.link;
+    }
+
+    const product = { title, price, image, href: link };
     console.log(product);
 
     data.push(product);
@@ -38,21 +40,41 @@ export const onScraper = async (page: Page, bot: BotAutomation) => {
   return { data };
 };
 
-const fetchNestedHref = async (page: Page, navigateLink: string) => {
-  let purchasableLink = "";
+const fetchNestedData = async (page: Page, navigateLink: string) => {
+  let nestedData = { link: "", price: "0" };
 
   try {
     await page.goto(navigateLink);
     await node.setTimeout(1000);
-    await page.waitForSelector(selectors.general.urls, { timeout: 3000 });
-    const linkList = (await page.$$(
-      selectors.general.urls
+    await page.waitForSelector(selectors.general.item, { timeout: 3000 });
+
+    const items = (await page.$$(
+      selectors.general.item
     )) as ElementHandle<HTMLAnchorElement>[];
 
-    for (const el of linkList) {
-      const href = await el.evaluate((el) => el.href || "");
-      if (href?.includes("paisplus")) {
-        purchasableLink = href;
+    if (items.length) {
+      for (const item of items) {
+        const providerName = await item.evaluate(
+          (el) => el.textContent?.trim() || ""
+        );
+        if (providerName.includes("פיס פלוס")) {
+          // Selcet price
+          nestedData.price = await item.$eval(
+            selectors.general.item_price,
+            (el) => el.textContent || "N/a"
+          );
+
+          // Selcet link
+          const href = await item.$$eval(
+            selectors.general.item_link,
+            (elements) =>
+              elements
+                .map((el) => el.getAttribute("href") || "N/a")
+                .find((href) => href.includes("paisplus")) || "N/a"
+          );
+
+          nestedData.link = href;
+        }
       }
     }
   } catch (error) {
@@ -63,6 +85,7 @@ const fetchNestedHref = async (page: Page, navigateLink: string) => {
 
   try {
     await page.goBack();
+    await node.setTimeout(1000);
     await page.waitForSelector(selectors.general.items);
     await page.$$(selectors.general.items);
   } catch (error) {
@@ -71,5 +94,5 @@ const fetchNestedHref = async (page: Page, navigateLink: string) => {
     );
   }
 
-  return purchasableLink;
+  return nestedData;
 };
