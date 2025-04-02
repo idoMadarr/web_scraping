@@ -1,10 +1,14 @@
 import { ElementHandle, Page } from "puppeteer";
 import node from "node:timers/promises";
 import selectors from "./selectors";
-import { ItemType } from "../types";
+import { ItemType, ProviderType } from "../types";
 import BotAutomation from "../models/BotAutomation";
 
-export const onScraper = async (page: Page, bot: BotAutomation) => {
+export const onScraper = async (
+  page: Page,
+  bot: BotAutomation,
+  provider: ProviderType
+) => {
   const items = await page.$$(selectors.general.items);
   const data: ItemType[] = [];
 
@@ -26,7 +30,7 @@ export const onScraper = async (page: Page, bot: BotAutomation) => {
     let price = "";
 
     if (href) {
-      const nestedData = await fetchNestedData(page, navigateLink);
+      const nestedData = await fetchNestedData(page, navigateLink, provider);
       price = nestedData.price;
       link = nestedData.link;
     }
@@ -40,7 +44,11 @@ export const onScraper = async (page: Page, bot: BotAutomation) => {
   return { data };
 };
 
-const fetchNestedData = async (page: Page, navigateLink: string) => {
+const fetchNestedData = async (
+  page: Page,
+  navigateLink: string,
+  provider: ProviderType
+) => {
   let nestedData = { link: "", price: "0" };
 
   try {
@@ -57,7 +65,7 @@ const fetchNestedData = async (page: Page, navigateLink: string) => {
         const providerName = await item.evaluate(
           (el) => el.textContent?.trim() || ""
         );
-        if (providerName.includes("פיס פלוס")) {
+        if (providerName.includes(provider.hebSelector)) {
           // Selcet price
           nestedData.price = await item.$eval(
             selectors.general.item_price,
@@ -65,15 +73,17 @@ const fetchNestedData = async (page: Page, navigateLink: string) => {
           );
 
           // Selcet link
-          const href = await item.$$eval(
+          const hrefs = await item.$$eval(
             selectors.general.item_link,
             (elements) =>
-              elements
-                .map((el) => el.getAttribute("href") || "N/a")
-                .find((href) => href.includes("paisplus")) || "N/a"
+              elements.map((el) => el?.getAttribute("href") || "N/a")
           );
 
-          nestedData.link = href;
+          const href = hrefs.find((href) =>
+            href.includes(provider.engSelector)
+          );
+
+          nestedData.link = href || "N/a";
         }
       }
     }
