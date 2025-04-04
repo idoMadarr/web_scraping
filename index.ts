@@ -1,8 +1,10 @@
 import { Page } from 'puppeteer';
+import fs from 'fs';
 import * as dotenv from 'dotenv';
 import { onScraper } from './utils/scraper';
 import createBot from './utils/createBot';
 import providersList from './utils/providers.js';
+import { DBType, ProviderType } from './types';
 import BotAutomation from './models/BotAutomation';
 
 dotenv.config();
@@ -20,20 +22,21 @@ const startScraping = async () => {
 };
 
 const providerScraper = async (
-  provider: string,
+  provider: ProviderType,
   page: Page,
   bot: BotAutomation
 ) => {
   try {
-    await page.goto(`${process.env.URL}/${provider}`, {
+    // Open new tab:
+    await page.goto(`${process.env.URL}/${provider.name}`, {
       waitUntil: 'networkidle2',
       timeout: 60000,
     });
 
     // Start scraping data:
-    await onScraper(page, bot);
+    await onScraper(page, bot, provider);
   } catch (error) {
-    console.log(`Error occur on ${provider}:`, error);
+    console.log(`Error occur on ${provider.name}:`, error);
   }
 };
 
