@@ -1,5 +1,5 @@
 export type DBType = {
-  [key: string]: { data: ItemType[] };
+  [key: string]: ItemType[];
 };
 
 export interface ItemType {

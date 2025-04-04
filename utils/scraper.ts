@@ -1,12 +1,12 @@
 import { ElementHandle, Page } from 'puppeteer';
 import node from 'node:timers/promises';
+import fs from 'fs';
 import selectors from './selectors';
-import { ItemType } from '../types';
+import { DBType, ItemType } from '../types';
 import BotAutomation from '../models/BotAutomation';
 
 export const onScraper = async (page: Page, bot: BotAutomation) => {
   const items = await page.$$(selectors.general.items);
-  const data: ItemType[] = [];
 
   for (const item of items) {
     const title = await item.$eval(
@@ -30,14 +30,12 @@ export const onScraper = async (page: Page, bot: BotAutomation) => {
 
     if (href) purchasableLink = await fetchNestedHref(page, navigateLink);
     const product = { title, price, image, href: purchasableLink };
-    console.log(product);
 
-    data.push(product);
+    localStore(product);
   }
-
-  return { data };
 };
 
+// Fetching data from nested item
 const fetchNestedHref = async (page: Page, navigateLink: string) => {
   let purchasableLink = '';
   await page.goto(navigateLink);
@@ -59,4 +57,25 @@ const fetchNestedHref = async (page: Page, navigateLink: string) => {
   await page.$$(selectors.general.items);
 
   return purchasableLink;
+};
+
+// Store on local cache db:
+const localStore = async (providerData: ItemType) => {
+  try {
+    const fileContent = fs.readFileSync(`db/${process.env.CACHE_DB}`, 'utf8');
+    const currentData: DBType = JSON.parse(fileContent);
+
+    const updatedData = [...currentData.data];
+    updatedData.push(providerData);
+
+    const storedData: DBType = { data: updatedData };
+
+    fs.writeFileSync(
+      `db/${process.env.CACHE_DB}`,
+      JSON.stringify(storedData),
+      'utf8'
+    );
+  } catch (error) {
+    console.log(`Error while store on cache: ${JSON.stringify(error)}`);
+  }
 };
